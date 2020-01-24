@@ -1,4 +1,5 @@
 import binascii
+import string
 
 freqs = {
     'A': 0.0651738,
@@ -30,11 +31,10 @@ freqs = {
     ' ': 0.1918182 
 }
 
-letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-valid = letters + letters.lower() + " "
+valid = string.printable[10:-38] + " "
 
 def singlebytexor(s,byte):
-	return "".join(chr(ord(s[i])^byte) for i in range(0,len(s)))
+	return "".join(chr(s[i]^byte) for i in range(0,len(s)))
 
 def score(s):
 	points = 0
@@ -45,16 +45,15 @@ def score(s):
 
 def main():
 	with open("3.txt","rb") as f:
-		ct = str(binascii.unhexlify(f.read()))
+		ct = binascii.unhexlify(f.read())
 		max_score = 0
-		key = 0
 		for i in range(0,256):
 			cur_try = singlebytexor(ct,i)
 			cur_score = score(cur_try)
 			if cur_score > max_score:
 				max_score = cur_score
-				key = i 
-	print singlebytexor(ct,key)
+				pt = singlebytexor(ct,i)
+	print(pt)
 
 if __name__ == "__main__":
 	main()
