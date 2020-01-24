@@ -1,3 +1,5 @@
+import binascii
+
 freqs = {
      'A': 0.0651738,
      'B': 0.0124248,
@@ -29,30 +31,29 @@ freqs = {
 }
 
 letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-valid_letters = letters + letters.lower() + " " 
+valid = letters + letters.lower() + " " 
+
+def singlebytexor(s,byte):
+	return "".join(chr(s[i]^byte) for i in range(0,len(s)))
+
 
 def score(s):
-	score = 0
-	for i in s:
-		if i in valid_letters:
-			c = i.upper()
-			score += freqs[c]
-	return score
+	points = 0
+	for ch in s:
+		if ch in valid:
+			points += freqs[ch.upper()]
+	return points
 
 def main():
 	with open("4.txt", "r") as file:
-		flag = 0
+		max_score = 0
 		for lines in file:
-			line = lines[:-1].decode("hex")
-			if flag == 0:
-				ret = "".join(chr(ord(line[j])^0) for j in range(0,len(line)))
-				max_score = score(ret)
-				flag = 1
-			for i in range(1,256):
-				curr = "".join(chr(ord(line[j])^i) for j in range(0,len(line)))
-				curr_score = score(curr)
-				if curr_score > max_score:
-					max_score = curr_score
-					ret = curr
-	print "-> Case with highest score > " + ret + "-> With a score of: " + str(max_score)
-main()
+			line = binascii.unhexlify(lines[:-1])
+			for i in range(0,256):
+				cur_score = score(singlebytexor(line,i))
+				if cur_score > max_score:
+					max_score = cur_score
+					ret = singlebytexor(line,i)
+		print(ret[:-1])
+if __name__ == "__main__":
+	main()
