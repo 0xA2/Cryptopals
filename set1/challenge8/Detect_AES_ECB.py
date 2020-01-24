@@ -1,21 +1,24 @@
 BLOCK_SIZE = 16
+
 def AES_ECB_Score(line):
-	substrings = [line[i:i + BLOCK_SIZE] for i in range(0, len(line), BLOCK_SIZE)]
-	score = len(substrings) - len(set(substrings))
-	print score
+	blocks = [line[i:i + BLOCK_SIZE*2] for i in range(0, len(line), BLOCK_SIZE*2)]
+	score = len(blocks) - len(set(blocks))
 	return score
 
-def main():
-	best_score = 0
-	with open("8.txt","r") as file:
-		count = 0
-		for line in file:
-			curr_score = AES_ECB_Score(line.strip("\n")) 
-			if curr_score > best_score:
-				best_score = curr_score
-				ret_line = line
-				ret_count = count
-			count += 1
-	print "Line with best score > " + str(ret_line) + "Number > " + str(ret_count) + "\nWith a score of > " + str(best_score)
+def detect_AES(file_content):
+	ret = ["",0]
+	for line in file_content:
+		cur_score = AES_ECB_Score(line)
+		if cur_score > ret[1]:
+			ret = [line,cur_score]
+	return ret
 
-main()
+def main():
+	with open("8.txt","r") as file:
+		content = [line.strip("\n") for line in file]
+		print ("Line encrypted with AES > " + str(detect_AES(content)[0]) + "\nWith a score of > " + str(detect_AES(content)[1]))
+
+if __name__ == "__main__":
+	main()
+
+
