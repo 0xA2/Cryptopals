@@ -1,12 +1,10 @@
-def encript(s, key):
-	full_key = key
-	while len(full_key) < len(s):
-		full_key += key
-	ret = "".join(chr(ord(s[i])^ord(full_key[i])) for i in range(0,len(s)))
-	print ret.encode("hex")
+import binascii
+
+def keyxor(s, key):
+	return binascii.hexlify("".join([chr(s[i]^key[i%len(key)]) for i in range(max(len(s),len(key)))]).encode())
 
 def main():
-	s = raw_input("String to encode > ")
-	k = raw_input("Key for encoding > ")
-	encript(s,k)
-main()
+	print(keyxor(b'Burning \'em, if you ain\'t quick and nimble\nI go crazy when I hear a cymbal',b'ICE'))
+
+if __name__ == "__main__":
+	main()
