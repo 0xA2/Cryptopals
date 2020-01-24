@@ -1,3 +1,11 @@
+import binascii
+import base64
+import string
+
+MAXSIZE = 42
+
+TOP_SCORING_KEYSIZE_BOUND = 5
+
 freqs = {
       'A': 0.0651738,
       'B': 0.0124248,
@@ -28,84 +36,77 @@ freqs = {
       ' ': 0.1918182 
 }
 
-letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-valid_letters = letters + letters.lower() + " " 
+valid = string.printable[10:-38] + " "
 
-def genblock(s,keysize,iter):
-	block = ""
-	for i in range(0,len(s)/keysize):
-		block += s[(i*keysize)+iter]
-	return block
+def singlebytexor(s,byte):
+	return "".join(chr(s[i]^byte) for i in range(0,len(s)))
 
 def score(s):
-	score = 0
-	for i in s:
-		if i in valid_letters:
-			c = i.upper()
-			score += freqs[c]
-	return score
-
-def singlebyteXOR(s):
-	ret = "".join(chr(ord(s[j])^0) for j in range(0,len(s)))
-	max_score = score(ret)
-	for i in range(1,256):
-		curr = "".join(chr(ord(s[j])^i) for j in range(0,len(s)))
-		curr_score = score(curr)
-		if curr_score > max_score:
-			max_score = curr_score
-			ret = curr
-			iter = i
-	return chr(iter)
+	points = 0
+	for ch in s:
+		if ch in valid:
+			points += freqs[ch.upper()]
+	return points
 
 def hamming(s1,s2):
-	bin1 = bin(int(s1.encode("hex"),16))[2:]
-	bin2 = bin(int(s2.encode("hex"),16))[2:]
-	if len(bin1) != len(bin2):
-		if len(bin1) < len(bin2):
-			bin1 = bin1.rjust(len(bin2), "0")
-		else:
-			bin2 = bin2.rjust(len(bin1),"0")
-	distance = 0
-	for i in range(0,len(bin2)):
-		if bin1[i] != bin2[i]:
-			distance += 1
-	return float(distance)
+	return len(bin(int(binascii.hexlify(s1),16)^int(binascii.hexlify(s2),16))[2:].replace("0",""))
 
-def breakrepeatingXOR(s):
+def getKeySize(ct):
+	assert MAXSIZE < len(ct)//4
 	dict = {}
-	for keysize in range(2,42):
-		block1 = "".join(s[i] for i in range(0,keysize))
-		block2 = "".join(s[i] for i in range(keysize, keysize*2))
-		block3 = "".join(s[i] for i in range(keysize*2,keysize*3))
-		block4 = "".join(s[i] for i in range(keysize*3,keysize*4))
-		dist = (hamming(block1,block2) + hamming(block2,block3) + hamming(block3,block4)) / 3.
-		normalized_edit_dist = dist/float(keysize)
-		dict.update({keysize :normalized_edit_dist})
-	potential_keys = sorted(list(dict.values()))[0:3]
-	best_score = 0
-	for i in range(0,len(potential_keys)):
-		key = ""
-		keysize = dict.keys()[dict.values().index(potential_keys[i])]
-		for i in range(0,keysize):
-			block = genblock(s,keysize,i)
-			key += singlebyteXOR(block)
-		curr_score = score(decript(s,key))
-		if curr_score > best_score:
-			real_key = key
-	print decript(s,real_key)
+	for i in range(2,MAXSIZE):
+		dict[i] = ((hamming(ct[:i],ct[i:-(len(ct)-2*i)]) + hamming(ct[i:-(len(ct)-i*2)],ct[i*2:-(len(ct)-i*3)]) + hamming(ct[i*2:-(len(ct)-i*3)],ct[i*3:-(len(ct)-i*4)]))/3)/i
+	values = sorted(dict.values())[0:TOP_SCORING_KEYSIZE_BOUND]
+	return [key for key in dict if dict[key] in values]
 
-def decript(s, key):
-	full_key = key
-	while len(full_key) < len(s):
-		full_key += key
-	ret = "".join(chr(ord(s[i])^ord(full_key[i])) for i in range(0,len(s)))
+def getBlocks(ct,key_size):
+	ret=[]
+	for i in range(0,len(key_size)):
+		temp = []
+		for j in range(0,key_size[i]):
+			parts = b""
+			for k in range(j,len(ct),key_size[i]):
+				parts += bytes([ct[k]])
+			temp.append(parts)
+		ret.append(temp)
 	return ret
 
+def getkey(ct_blocks):
+	potential_keys = []
+	for blocks in ct_blocks:
+		key = ""
+		for single_block in blocks:
+			max_score = 0
+			key_part = ""
+			for i in range(0,256):
+				cur_try = singlebytexor(single_block,i)
+				cur_score = score(cur_try)
+				if cur_score > max_score:
+					max_score = cur_score
+					key_part = chr(i)
+			key += key_part
+		potential_keys.append(key)
+	return potential_keys
+
+def breakReXor(ct,potential_keys):
+	max_score = 0
+	pt = ""
+	for key in potential_keys:
+		potential_pt = "".join(chr(ct[i]^ord(key[i%len(key)])) for i in range(0,len(ct)))
+		cur_score = score(potential_pt)
+		if cur_score > max_score:
+			max_score = cur_score
+			pt = potential_pt
+	return pt
+
 def main():
-	with open("6.txt","r") as file:
-		text = ""
-		for line in file:
-			text += line[:-1]
-	s = text.decode("base64")
-	breakrepeatingXOR(s)
-main()
+	with open("6.txt","r") as f:
+		ct = base64.b64decode("".join(line[:-1] for line in f))
+		key_size = getKeySize(ct)
+		blocks = getBlocks(ct,key_size)
+		possible_keys = getkey(blocks)
+		pt = breakReXor(ct,possible_keys)
+		print (pt)
+if __name__ == "__main__":
+	main()
+
