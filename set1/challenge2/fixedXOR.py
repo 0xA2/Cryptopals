@@ -1,16 +1,12 @@
-def fixedXOR():
-	str0 = raw_input("First hex value > ")
-	str1 = raw_input("Second hex value > ")
+import binascii
 
-	if len(str(str0)) != len(str(str1)):
-		return "Invalid hex values, both must have the same length"
+def fixedXOR(s1,s2):
+	if len(s1) != len(s2):
+		return "Strings with diferent length!"
+	return hex(int(s1,16)^int(s2,16))[2:]
 
-	dec0 = str0.decode("hex")
-	dec1 = str1.decode("hex")
-	ret = "".join(chr(ord(dec0[i])^ord(dec1[i])) for i in range(0,len(dec0)))
-	print ret.encode("hex")
+def main():
+	print(fixedXOR(b'1c0111001f010100061a024b53535009181c',b'686974207468652062756c6c277320657965'))
 
-try:
-	fixedXOR()
-except TypeError:
-	print "Error, odd-length string"
+if __name__ == "__main__":
+	main()
