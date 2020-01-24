@@ -1,4 +1,4 @@
-BLOCK_SIZE = 16
+BLOCK_SIZE = 16    
 
 def AES_ECB_Score(line):
 	blocks = [line[i:i + BLOCK_SIZE*2] for i in range(0, len(line), BLOCK_SIZE*2)]
