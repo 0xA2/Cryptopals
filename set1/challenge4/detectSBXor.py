@@ -30,8 +30,7 @@ freqs = {
      ' ': 0.1918182 
 }
 
-letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-valid = letters + letters.lower() + " " 
+valid = string.printable[10:-38] + " "
 
 def singlebytexor(s,byte):
 	return "".join(chr(s[i]^byte) for i in range(0,len(s)))
