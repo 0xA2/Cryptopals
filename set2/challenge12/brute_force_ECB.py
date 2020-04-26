@@ -24,8 +24,9 @@ def enc(pt,key):
 def brute_force_ECB(pt,key):
 	known_bytes = b""
 	for i in range(0,PT_LEN):
+		cur = enc(b'A'*(PT_LEN - 1  - i) + pt,key)[:(PT_LEN -1 )]
 		for byte in string.printable.encode():
-			if enc(b'A'*(PT_LEN - 1  - i) + known_bytes + chr(byte).encode(),key)[:(PT_LEN-1)] == enc(b'A'*(PT_LEN - 1  - i) + pt,key)[:(PT_LEN -1 )]:
+			if enc(b'A'*(PT_LEN - 1  - i) + known_bytes + chr(byte).encode(),key)[:(PT_LEN-1)] == cur:
 				known_bytes += chr(byte).encode()
 				break
 	return known_bytes.decode()
