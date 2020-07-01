@@ -3,6 +3,7 @@ from os import urandom
 from random import randint
 
 import base64
+
 BLOCK_SIZE = 16
 KEY_SIZE = 16
 IV_SIZE = 16
@@ -65,46 +66,30 @@ def cbc_padding_oracle(ct,key,iv):
 		# First case - first blocks
 		if i != len(ct_blocks) - 2 :
 			pt_block = []
-			for j in range(BLOCK_SIZE-1,-1,-1):
-				if len(pt_block) == 0:
-					corruptedBlock = blockToCorrupt.copy()
-				else:
-					byteToPad = BLOCK_SIZE - 1
-					for c in range(0,len(pt_block)):
-						corruptedBlock[byteToPad] = (len(pt_block)+1)^pt_block[c]^blockToCorrupt[byteToPad]
-						byteToPad -= 1
-
-
-				for k in range(0,256):
-					corruptedBlock[j] = k
-
-					if cbc_decrypt(bytes(blockToDecrypt),key,bytes(corruptedBlock)):
-						pt_block.append((len(pt_block)+1)^k^blockToCorrupt[-(len(pt_block)+1)])
-						break
-			pt += bytes(pt_block[::-1])
+			pad = 0
 
 		# Second case - last block
 		# We'll use the padding we retrieved earlier
 		else:
 			pt_block = padding
-			for j in range(BLOCK_SIZE-1-len(padding),-1,-1):
-				if len(pt_block) == 0:
-					corruptedBlock = blockToCorrupt.copy()
-				else:
-					byteToPad = BLOCK_SIZE - 1
-					for c in range(0,len(pt_block)):
-						corruptedBlock[byteToPad] = (len(pt_block)+1)^pt_block[c]^blockToCorrupt[byteToPad]
-						byteToPad -= 1
+			pad = len(padding)
 
+		for j in range(BLOCK_SIZE-1-pad,-1,-1):
+			if len(pt_block) == 0:
+				corruptedBlock = blockToCorrupt.copy()
+			else:
+				byteToPad = BLOCK_SIZE - 1
+				for c in range(0,len(pt_block)):
+					corruptedBlock[byteToPad] = (len(pt_block)+1)^pt_block[c]^blockToCorrupt[byteToPad]
+					byteToPad -= 1
 
-				for k in range(0,256):
-					corruptedBlock[j] = k
+			for k in range(0,256):
+				corruptedBlock[j] = k
 
-					if cbc_decrypt(bytes(blockToDecrypt),key,bytes(corruptedBlock)):
-						pt_block.append((len(pt_block)+1)^k^blockToCorrupt[-(len(pt_block)+1)])
-						break
-			pt += bytes(pt_block[::-1])
-
+				if cbc_decrypt(bytes(blockToDecrypt),key,bytes(corruptedBlock)):
+					pt_block.append((len(pt_block)+1)^k^blockToCorrupt[-(len(pt_block)+1)])
+					break
+		pt += bytes(pt_block[::-1])
 
 	return pt
 
