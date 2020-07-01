@@ -3,7 +3,6 @@ from os import urandom
 from random import randint
 
 import base64
-
 BLOCK_SIZE = 16
 KEY_SIZE = 16
 IV_SIZE = 16
