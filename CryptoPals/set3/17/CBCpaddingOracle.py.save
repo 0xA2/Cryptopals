@@ -1,0 +1,82 @@
+from Crypto.Cipher import AES
+from base64 import b64decode
+from os import urandom
+from random import randint
+
+BLOCKSIZE = 16
+
+def getRandomString():
+	strings = ["MDAwMDAwTm93IHRoYXQgdGhlIHBhcnR5IGlzIGp1bXBpbmc=","MDAwMDAxV2l0aCB0aGUgYmFzcyBraWNrZWQgaW4gYW5kIHRoZSBWZWdhJ3MgYXJlIHB1bXBpbic=","MDAwMDAyUXVpY2sgdG8gdGhlIHBvaW50LCB0byB0aGUgcG9pbnQsIG5vIGZha2luZw==","MDAwMDAzQ29va2luZyBNQydzIGxpa2UgYSBwb3VuZCBvZiBiYWNvbg==","MDAwMDA0QnVybmluZyAnZW0sIGlmIHlvdSBhaW4ndCBxdWljayBhbmQgbmltYmxl","MDAwMDA1SSBnbyBjcmF6eSB3aGVuIEkgaGVhciBhIGN5bWJhbA==","MDAwMDA2QW5kIGEgaGlnaCBoYXQgd2l0aCBhIHNvdXBlZCB1cCB0ZW1wbw==","MDAwMDA3SSdtIG9uIGEgcm9sbCwgaXQncyB0aW1lIHRvIGdvIHNvbG8=","MDAwMDA4b2xsaW4nIGluIG15IGZpdmUgcG9pbnQgb2g=","MDAwMDA5aXRoIG15IHJhZy10b3AgZG93biBzbyBteSBoYWlyIGNhbiBibG93"]
+	#return b64decode(strings[randint(0,len(strings)-1)])
+	return b64decode(strings[0])
+
+def padding(string, blockSize):
+	if len(string)%blockSize == 0:
+		return string + b'\x16'*16
+	byte = blockSize-(len(string)%blockSize)
+	pad = b"".join( bytes.fromhex( hex(byte)[2:].rjust(2,"0") ) for _ in range(byte))
+	return string + pad
+
+def PKCS7paddingValidation(string, blocksize):
+	byteNum = string[len(string)-1]
+	toVerify = string[-byteNum:]
+	if toVerify == chr(byteNum).encode()*byteNum:
+		return True
+	return False
+
+def cbcEncrypt(plaintext, key, iv):
+	plaintext = padding(plaintext, BLOCKSIZE)
+	aes = AES.new(key, AES.MODE_CBC, iv)
+	ciphertext = aes.encrypt(plaintext)
+	return ciphertext
+
+def getBlocks(ciphertext):
+	ret = []
+	for i in range(0,len(ciphertext)//BLOCKSIZE):
+		ret.append(ciphertext[i*BLOCKSIZE:(i+1)*BLOCKSIZE])
+	return ret
+
+def cbcDecrypt(ciphertext, key, iv):
+	aes = AES.new(key, AES.MODE_CBC, iv)
+	plaintext = aes.decrypt(ciphertext)
+	return PKCS7paddingValidation(plaintext, BLOCKSIZE)
+
+def cbcPaddingOracleAttack(ciphertext, key, iv):
+	plaintext = b""
+	blocks = [list(iv)] + [list(ciphertext[i:i + BLOCKSIZE]) for i in range(0,len(ciphertext),BLOCKSIZE)]
+
+	for i in range(0,16):
+
+		if len(plaintext) == 0:
+			editIV = blocks[0]
+		else:
+			tmp = BLOCKSIZE - 1
+			curBlock = blocks[0].copy()
+			for ch in range(0, len(plaintext)):
+				curBlock[tmp] = (len(plaintext)+1) ^ plaintext[ch] ^ iv[tmp]
+				tmp -= 1
+			editIV = curBlock
+		#print (editIV)
+
+		for j in range(0,256):
+			editIV[len(editIV)-1-i] = j
+			#if i == 1:
+				#print (editIV)
+			newIV = bytearray(editIV)
+			if cbcDecrypt( bytearray(blocks[1]), key, newIV ):
+				print ("cenas")
+				plaintext += chr( j ^ (len(plaintext)+1) ^ iv[BLOCKSIZE-1-i] ).encode()
+
+	return plaintext[::-1]
+
+
+def main():
+	key = urandom(BLOCKSIZE)
+	iv = urandom(BLOCKSIZE)
+	string = getRandomString()
+	ciphertext = cbcEncrypt(string, key, iv)
+	plaintext = cbcPaddingOracleAttack(ciphertext, key, iv)
+	print (plaintext)
+
+if __name__ == "__main__":
+	main()
